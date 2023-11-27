@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bootstrap demo</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65"
+      crossorigin="anonymous"
+    />
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.2.2/mqtt.min.js"
+      integrity="sha512-I8gBERqrEkyDqbjHj3aymzBVIPFs85vGSzy26+1P5weHzFp8vfJ8dARJz51n3oQ80DTdYn8MbhUiz5UAW2rMxw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+  </head>
+  <body onload="initialize()">
+    <div class="container">
+      <h1>Weather Station</h1>
+      <b>From NodeMCU</b>
+      <div class="row">
+        <div class="col-3">
+          <div class="row">
+            <div class="col-8" >
+                <b>Temperture</b>
+                <b id="temp"> 0 °C</b>
+               
+            </div>
+            <div class="col-8">
+              <span id="lastTemp"></span>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-6">
+              <b>Humidity</b>
+              <b id="humid"> 0 </b>
+            </div>
+            <div class="col-8">
+              <span id="lastHum"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-4">
+          <canvas id="myChart" width="400" height="200"> </canvas>
+        </div>
+        <div class="col-4">
+          <canvas id="myChart2" width="400" height="200"> </canvas>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-4">
+          <canvas id="myChart3" width="400" height="200"> </canvas>
+        </div>
+        <div class="col-4">
+          <canvas id="myChart4" width="400" height="200"> </canvas>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-4">
+          <button class="btn btn-primary" id="btnOn"  onclick="turnOn()">
+            On
+          </button>
+          <button class="btn btn-primary" id="btnOff"  onclick="turnOff()">
+            Off
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-2.2.4.js"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4"
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.0/dist/chart.min.js"></script>
+  </body>
+  <script>
+    const apiBaseUrl = "http://172.20.10.3:5000/nodemcu";
+
+    const initialize = () => {
+      setInterval(updateLastData, 2000);
+      setInterval(updateChartData, 2000);
+      loadDataTS();
+    };
+
+    const updateLastData = () => {
+      fetch(`${apiBaseUrl}/last`)
+        .then((response) => response.json())
+        .then((json) => {
+          const jsonData = JSON.parse(json[0].message);
+          if (jsonData) {
+            const { temperature, humidity } = jsonData;
+            document.getElementById("temp").innerText = `${temperature.toFixed(
+              2
+            )} °C`;
+            document.getElementById("humid").innerText = ` ${humidity.toFixed(
+              2
+            )} %`;
+          }
+        });
+    };
+
+    const updateChartData = () => {
+      fetch(`${apiBaseUrl}/data`)
+        .then((response) => response.json())
+        .then((json) => {
+          if (json.length > 0) {
+            const data_temp = [];
+            const data_humid = [];
+          }
+          for (let i = 0; i < json.length; i++) {
+            const { temperature, humidity } = json[i];
+            data_temp.push(temperature);
+            data_humid.push(humidity);
+          }
+
+          updateChart("myChart", data_temp);
+          updateChart2("myChart2", data_humid);
+        });
+    };
+
+    const updateChartData2 = () => {
+        fetch(`${apiBaseUrl}/data`)
+          .then((response) => response.json())
+          .then((json) => {
+            if (json.length > 0) {
+              const data_temp = [];
+              const data_humid = [];
+            }
+            for (let i = 0; i < json.length; i++) {
+              const { temperature, humidity } = json[i];
+              data_temp.push(temperature);
+              data_humid.push(humidity);
+            }
+            updateChart2("myChart2", data_humid);
+          });
+      };
+
+    let jsonLength;
+    let myChart;
+    let myChart2;
+    const updateChart = (chartId, data_temp, xlabel) => {
+      const ctx = document.getElementById(chartId);
+
+      if (jsonLength !== data_temp.length) {
+        if (myChart) {
+          myChart.destroy();
+          jsonLength = data_temp.length;
+        }
+      }
+
+      myChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: xlabel,
+          datasets: [
+            {
+              label: "Temperature",
+              borderColor: "rgb(255, 99, 132)",
+              data: data_temp,
+            },
+          ],
+        },
+      });
+    };
+
+    const updateChart2 = (chartId, data_humid, xlabel) => {
+      const ctx = document.getElementById(chartId);
+
+      if (jsonLength !== data_humid.length) {
+        if (myChart2) {
+          myChart2.destroy();
+          jsonLength = data_humid.length;
+        }
+      }
+
+      myChart2 = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: xlabel,
+          datasets: [
+            {
+              label: "Humidity",
+              borderColor: "rgb(0, 128, 128)",
+              data: data_humid,
+            },
+          ],
+        },
+      });
+    };
+
+    const loadDataTS = () => {
+      fetch("http://172.20.10.3:5000/thingspeak")
+        .then((res) => res.json())
+        .then((json) => {
+          const data_temp = [];
+          const data_humid = [];
+          for (let i = 0; i < json.feeds.length; i++) {
+            data_temp.push(json.feeds[i].field5);
+            data_humid.push(json.feeds[i].field5);
+          }
+
+          const xlabel = json.feeds.map((feed) => {
+            const utcDate = new Date(feed.created_at);
+            return utcDate.toLocaleString("en-US", {
+              timeZone: "Asia/Bangkok",
+              hour12: false,
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+          });
+          console.log(data_temp);
+          console.log(data_humid);
+          updateChart("myChart", data_temp, xlabel);
+          updateChart2("myChart2", data_humid, xlabel);
+        });
+    };
+
+    const turnOn = () => {
+        fetch(`${apiBaseUrl}/led/on`)
+            .then(response => response.json())
+            .then(json => {
+                console.log(json);
+            });
+    }
+
+    const turnOff = () => {
+        fetch(`${apiBaseUrl}/led/off`)
+            .then(response => response.json())
+            .then(json => {
+                console.log(json);
+            });
+    }
+  </script>
+</html>
